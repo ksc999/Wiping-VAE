@@ -1,5 +1,5 @@
 import torch
-from base import BaseVAE
+from models.base import BaseVAE
 from torch import nn
 from torch.nn import functional as F
 from .types_ import *
@@ -44,14 +44,14 @@ class BetaVAE(BaseVAE):
             in_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)
-        self.fc_mu = nn.Linear(hidden_dims[-1]*4, latent_dim)
-        self.fc_var = nn.Linear(hidden_dims[-1]*4, latent_dim)
+        self.fc_mu = nn.Linear(hidden_dims[-1]*16, latent_dim)
+        self.fc_var = nn.Linear(hidden_dims[-1]*16, latent_dim)
 
 
         # Build Decoder
         modules = []
 
-        self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 4)
+        self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 16)
 
         hidden_dims.reverse()
 
@@ -104,7 +104,7 @@ class BetaVAE(BaseVAE):
 
     def decode(self, z: Tensor) -> Tensor:
         result = self.decoder_input(z)
-        result = result.view(-1, 512, 2, 2)
+        result = result.view(-1, 512, 4, 4)
         result = self.decoder(result)
         result = self.final_layer(result)
         return result
