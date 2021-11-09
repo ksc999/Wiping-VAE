@@ -1,2 +1,2 @@
 # Wiping_VAE
-VAE implication for ISRLab Wiping Project
+VAE application for ISRLab Wiping Project
