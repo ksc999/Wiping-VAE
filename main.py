@@ -4,7 +4,7 @@ from PIL import Image
 import torch
 import numpy as np
 import torch.optim as optim
-from torch.utils.data import DataLoader, dataloader
+from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 import time
@@ -44,7 +44,7 @@ class beta_VAE_Pretrain:
                                     weight_decay=self.args.weight_decay)
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.args.milestones)
 
-        self.early_stop_queue = np.zeros(self.args.early_stop_tolerance)
+        self.early_stop_queue = []
         self.early_stop_queue_cnt = 0
         self.early_stop_epoch_threshold = self.args.early_stop_threshold
 
@@ -55,14 +55,14 @@ class beta_VAE_Pretrain:
     def parse_args(self):
         parser = argparse.ArgumentParser(description='VAE in Wiping Project')
         parser.add_argument('--dataset_type', type=str, default='circle')
-        parser.add_argument('--learning_rate', type=float, default=5e-4)
-        parser.add_argument('--batch_size', type=int, default=128)
+        parser.add_argument('--learning_rate', type=float, default=1e-3)
+        parser.add_argument('--batch_size', type=int, default=512)
         parser.add_argument('--epochs', type=int, default=1000)
         parser.add_argument('--store_best_model_epoch_interval', type=int, default=1)
         parser.add_argument('--weight_decay', type=float, default=1e-4)
         parser.add_argument('--milestones', type=int, nargs='+', default=[20, 40])
         parser.add_argument('--early_stop_tolerance', type=int, default=5)
-        parser.add_argument('--early_stop_threshold', type=int, default=15)
+        parser.add_argument('--early_stop_threshold', type=int, default=10)
         self.args = parser.parse_args()
 
     def train(self):
@@ -82,9 +82,10 @@ class beta_VAE_Pretrain:
             self.scheduler.step()
             val_loss_mean = self.val(epoch)
             if epoch % self.args.store_best_model_epoch_interval == self.args.store_best_model_epoch_interval - 1:
-                if val_loss_mean <= self.lowest_val_loss:
+                # if val_loss_mean <= self.lowest_val_loss:
+                if True:
                     torch.save(self.model.state_dict(), self.save_model_path + '/best_model.pth')
-                    self.lowest_val_loss = val_loss_mean
+                    # self.lowest_val_loss = val_loss_mean
                     logger.debug(f'epoch: {epoch} Best model!')
             self.writer.add_scalar('val/loss', val_loss_mean, epoch)
             logger.debug(f'epoch: {epoch}, train_loss: {train_loss_mean}, val_loss: {val_loss_mean}')
@@ -101,13 +102,13 @@ class beta_VAE_Pretrain:
         val_mean_loss = np.mean(losses)
         if epoch > self.early_stop_epoch_threshold:
             if self.early_stop_queue_cnt < self.args.early_stop_tolerance:
-                self.early_stop_queue[self.early_stop_queue_cnt] = val_mean_loss
+                self.early_stop_queue.append(val_mean_loss)
                 self.early_stop_queue_cnt += 1
             else:
-                self.early_stop_queue = self.early_stop_queue[1:].tolist()  # bug fixed
+                self.early_stop_queue = self.early_stop_queue[1:]  # bug fixed
                 self.early_stop_queue.append(val_mean_loss)
-                dif = np.diff(self.early_stop_queue)
-                if np.all(dif < 0):
+                dif = np.diff(np.array(self.early_stop_queue))
+                if np.all(dif > 0):
                     logger.debug('Early stop!')
                     raise Exception('Early stop!')
         return val_mean_loss
@@ -154,9 +155,10 @@ class beta_VAE_Pretrain:
 
 if __name__ == '__main__':
     wiping_vae_pretrain = beta_VAE_Pretrain()
-    wiping_vae_pretrain.train()
-    # time_step = '2021-12-07_21-20-42'
-    # wiping_vae_pretrain.load_model(os.getcwd() + '/saved_models/' + time_step + '/best_model.pth')
+    # wiping_vae_pretrain.train()
+    time_step = '2021-12-08_14-29-12'
+    wiping_vae_pretrain.load_model(os.getcwd() + '/saved_models/' + time_step + '/best_model.pth')
+    # wiping_vae_pretrain.train()
     wiping_vae_pretrain.visualized_res()
 
     
