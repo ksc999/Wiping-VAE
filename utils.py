@@ -1,7 +1,7 @@
 import os
 import torch
 
-def get_all_filenames(root='/home/kangsc/wiping_vae_dataset/line_vae/'):
+def get_all_filenames(root='/home/kangsc/wiping_vae_dataset/circle_vae/'):
     filenames = []
     cnt = 0
     for file in os.listdir(root):
