@@ -143,15 +143,6 @@ def vae_inference(input, device):
         vae.to(device)
         vae.eval()
         encode_vec, _ = vae.encode(batch)
-        '''
-        debug code
-        '''
-        # rec, mu, logvar = vae(batch)
-        # # assert mu == encode_vec[0]
-        # resultsample = (torch.cat([batch[0], rec[0]], dim=1) * 0.5 + 0.5).cpu().numpy().transpose((1, 2, 0))
-        # # resultsample = resultsample.cpu()
-        # plt.imshow(resultsample)
-        # plt.show()
         return encode_vec[0].cpu().numpy()
 
 def train_vae(train_dataset, val_dataset, device):
@@ -174,20 +165,11 @@ def train_vae(train_dataset, val_dataset, device):
                                            drop_last=True)
     val_dataloader = DataLoader(val_dataset, batch_size=eval_batch_size, shuffle=True,
                                          drop_last=False)
-
-    # dataset_len = len(dataset)
-    # train_data = dataset[:int(0.9*dataset_len)]
-    # valid_data = dataset[int(0.9*dataset_len):]
     best_valid_loss = 100000
     for epoch in range(train_epoch):
         vae.train()
-
         print("Train set size:", len(train_dataset))
-
-        # random.shuffle(train_data)
-        # random.shuffle(valid_data)
         losses = []
-
         epoch_start_time = time.time()
         if epoch <= 6:
             if (epoch + 1) % 2 == 0:
@@ -207,10 +189,6 @@ def train_vae(train_dataset, val_dataset, device):
                 print("learning rate change!")
         for idx, batch in enumerate(train_dataloader):
             vae.train()
-            # batch = np.array(train_data[idx:min(idx+batch_size, len(train_data))])
-            # batch = process_batch(batch, device)
-            # batch = batch.to(device)
-            # vae.train()
             vae.zero_grad()
             batch = batch.to(device)
             rec, mu, logvar = vae(batch)
@@ -219,33 +197,24 @@ def train_vae(train_dataset, val_dataset, device):
             loss.backward()
             vae_optimizer.step()
             losses.append(loss.item())
+            # TODO: realtime image-showing
             with torch.no_grad():
                 vae.eval()
                 if (idx//batch_size) % 30 == 0:
-                    print("step {} train loss: {}".format(idx//batch_size, np.mean(losses)))
-                    losses = []
                     resultsample = (torch.cat([batch[0], rec[0]], dim=1) * 0.5 + 0.5)
                     resultsample = resultsample.cpu().numpy().transpose(1, 2, 0)
-                    plt.imshow(resultsample)
-                    plt.imsave('./generated_images/train_{}.png'.format(idx//batch_size), resultsample)
-                    # plt.show()
-
-            #############################################
-
-            # os.makedirs('results_rec', exist_ok=True)
-            # os.makedirs('results_gen', exist_ok=True)
-
+                    plt.imshow(resultsample)  
+                    plt.imsave('./generated_images/train.png'.format(idx//batch_size), resultsample)
+            # END TODO
         epoch_end_time = time.time()
         per_epoch_ptime = epoch_end_time - epoch_start_time
-        # print("epoch{} training loss: {}".format(epoch, np.mean(losses)))
+        print("epoch{} training loss: {}".format(epoch, np.mean(losses)))
         print("taining time:", per_epoch_ptime)
         val_losses = []
         with torch.no_grad():
             vae.eval()
             eval_epoch_l = []
             for batch in val_dataloader:
-                # batch = np.array(valid_data[i:min(i + eval_batch_size, len(valid_data))])
-                # batch = process_batch(batch, device)
                 batch = batch.to(device)
                 x_rec, mu, logvar = vae(batch)
                 loss_re, loss_kl = loss_function(x_rec, batch, mu, logvar)
@@ -256,22 +225,11 @@ def train_vae(train_dataset, val_dataset, device):
                 torch.save(vae.state_dict(), "./dl_saved_models/best.pt")
             resultsample = (torch.cat([batch[0], x_rec[0]], dim=1) * 0.5 + 0.5)
             resultsample = resultsample.cpu().numpy().transpose(1,2,0)
-            # plt.imshow(resultsample)
             plt.imsave('./generated_images/val_{}.png'.format(epoch), resultsample)
-            # plt.show()
             print("epoch{} eval loss: {}".format(epoch, np.mean(eval_epoch_l)))
             torch.save(vae.state_dict(), "./dl_saved_models/checkpoint{}.pt".format(epoch))
-
-            # save_image(resultsample.view(-1, 3, im_size, im_size),
-            #            'results_rec/sample_' + str(epoch) + "_" + str(i) + '.png')
-            # x_rec = vae.decode(sample1)
-            # resultsample = x_rec * 0.5 + 0.5
-            # resultsample = resultsample.cpu()
-            # save_image(resultsample.view(-1, 3, im_size, im_size),
-            #            'results_gen/sample_' + str(epoch) + "_" + str(i) + '.png')
-
     print("Training finish!...")
-    # torch.save(vae.state_dict(), "VAEmodel.pkl")
+
     
 if __name__ == '__main__':
     from dataset import MyDataset
